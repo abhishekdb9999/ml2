@@ -1,0 +1,58 @@
+import pandas as pd
+
+data = pd.DataFrame([
+    ['Sunny','Warm','Normal','Strong','Warm','Same','Yes'],
+    ['Sunny','Warm','High','Strong','Warm','Same','Yes'],
+    ['Rainy','Cold','High','Strong','Warm','Change','No'],
+    ['Sunny','Warm','High','Strong','Cool','Change','Yes']
+], columns=['Sky','AirTemp','Humidity','Wind','Water','Forecast','EnjoySport'])
+
+print("Dataset:\n", data, "\n")
+
+X = data.iloc[:, :-1].values
+y = data.iloc[:, -1].values
+
+def find_s(X, y):
+    hypothesis = ['0'] * X.shape[1]
+    for i, val in enumerate(y):
+        if val == "Yes":
+            for j in range(len(hypothesis)):
+                if hypothesis[j] == '0':
+                    hypothesis[j] = X[i][j]
+                elif hypothesis[j] != X[i][j]:
+                    hypothesis[j] = '?'
+    return hypothesis
+
+final_hypothesis = find_s(X, y)
+print("Final Hypothesis (Find-S):", final_hypothesis, "\n")
+
+def candidate_elimination(X, y):
+    n_features = X.shape[1]
+    S = [['0'] * n_features]
+    G = [['?'] * n_features]
+    for i, instance in enumerate(X):
+        if y[i] == "Yes":
+            G = [g for g in G if all(g[j] == '?' or g[j] == instance[j] for j in range(n_features))]
+            for s in S:
+                for j in range(n_features):
+                    if s[j] == '0':
+                        s[j] = instance[j]
+                    elif s[j] != instance[j]:
+                        s[j] = '?'
+        else:
+            S = [s for s in S if not all(s[j] == '?' or s[j] == instance[j] for j in range(n_features))]
+            new_G = []
+            for g in G:
+                for j in range(n_features):
+                    if g[j] == '?':
+                        if S[0][j] != '?':
+                            new_hypothesis = g.copy()
+                            new_hypothesis[j] = S[0][j]
+                            new_G.append(new_hypothesis)
+            G.extend(new_G)
+    return S, G
+
+S_final, G_final = candidate_elimination(X, y)
+print("Final S (Most Specific Hypotheses):", S_final)
+print("Final G (Most General Hypotheses):", G_final, "\n")
+print("Version Space lies between S and G")
