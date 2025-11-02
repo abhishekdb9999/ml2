@@ -1,0 +1,58 @@
+import Orange
+import pandas as pd
+
+data = Orange.data.Table("iris")
+cn2 = Orange.classification.rules.CN2Learner()
+classifier = cn2(data)
+
+print("=== CN2 Generated Rules ===")
+for rule in classifier.rule_list:
+    print(rule)
+
+toy_data = pd.DataFrame([
+    ['Sunny','Hot','High','Weak','No'],
+    ['Sunny','Hot','High','Strong','No'],
+    ['Overcast','Hot','High','Weak','Yes'],
+    ['Rain','Mild','High','Weak','Yes'],
+    ['Rain','Cool','Normal','Weak','Yes'],
+    ['Rain','Cool','Normal','Strong','No'],
+    ['Overcast','Cool','Normal','Strong','Yes'],
+    ['Sunny','Mild','High','Weak','No'],
+    ['Sunny','Cool','Normal','Weak','Yes'],
+    ['Rain','Mild','Normal','Weak','Yes'],
+    ['Sunny','Mild','Normal','Strong','Yes'],
+    ['Overcast','Mild','High','Strong','Yes'],
+    ['Overcast','Hot','Normal','Weak','Yes'],
+    ['Rain','Mild','High','Strong','No'],
+], columns=['Outlook','Temp','Humidity','Wind','Play'])
+
+def foil_algorithm(df, target_col='Play', pos_label='Yes'):
+    rules = []
+    pos_examples = df[df[target_col] == pos_label]
+    while len(pos_examples) > 0:
+        rule = []
+        candidates = [col for col in df.columns if col != target_col]
+        covered = pos_examples.copy()
+        while len(covered) > 0 and len(candidates) > 0:
+            best_attr, best_val, best_gain = None, None, -1
+            for attr in candidates:
+                for val in df[attr].unique():
+                    pos = covered[covered[attr] == val]
+                    gain = len(pos)
+                    if gain > best_gain:
+                        best_attr, best_val, best_gain = attr, val, gain
+            if best_gain <= 0:
+                break
+            rule.append((best_attr, best_val))
+            covered = covered[covered[best_attr] == best_val]
+            candidates.remove(best_attr)
+        if len(rule) > 0:
+            rules.append(rule)
+        pos_examples = pos_examples.drop(covered.index, errors="ignore")
+    return rules
+
+rules = foil_algorithm(toy_data)
+print("\n=== FOIL Generated Rules ===")
+for i, rule in enumerate(rules):
+    conditions = " AND ".join([f"{attr}={val}" for attr, val in rule])
+    print(f"Rule {i+1}: IF {conditions} THEN Play=Yes")
